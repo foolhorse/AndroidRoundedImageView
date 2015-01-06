@@ -1,0 +1,16 @@
+<resources>
+
+    <!--attr-->
+    <attr name="border_width" format="dimension" />
+
+    <!--declare-styleable-->
+    <declare-styleable name="RoundedImageView">
+        <attr name="border_width" />
+        <attr name="border_color" format="color" />
+        <!--TODO support deffrent shape-->
+        <attr name="shape">
+            <enum name="circle" value="0" />
+            <enum name="round" value="1" />
+        </attr>
+    </declare-styleable>
+</resources>
