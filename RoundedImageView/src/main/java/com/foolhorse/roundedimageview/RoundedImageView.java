@@ -207,6 +207,29 @@ public class RoundedImageView extends ImageView {
         mBitmapShader.setLocalMatrix(shaderMatrix);
     }
 
+    public int getBorderColor() {
+        return mBorderColor;
+    }
 
+    public void setBorderColor(int borderColor) {
+        if (borderColor == mBorderColor) {
+            return;
+        }
+        mBorderColor = borderColor;
+        Log.e("MARR","setBorderColor");
+        invalidate();
+    }
 
+    public int getBorderWidth() {
+        return mBorderWidth;
+    }
+
+    public void setBorderWidth(int borderWidth) {
+        if (borderWidth == mBorderWidth) {
+            return;
+        }
+        mBorderWidth = borderWidth;
+        Log.e("MARR","setBorderWidth");
+        invalidate();
+    }
 }
