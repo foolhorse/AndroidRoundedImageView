@@ -26,8 +26,6 @@ public class RoundedImageView extends ImageView {
     private static final int SHAPE_CIRCLE = 0;
     private static final int SHAPE_ROUND = 1;
 
-    private static final ImageView.ScaleType SCALE_TYPE = ImageView.ScaleType.CENTER_CROP;
-
     private static final int DEFAULT_BORDER_WIDTH = 0;
     private static final int DEFAULT_BORDER_COLOR = Color.BLACK;
 
@@ -69,13 +67,8 @@ public class RoundedImageView extends ImageView {
 
 
     @Override
-    public ImageView.ScaleType getScaleType() {
-        return SCALE_TYPE;
-    }
-
-    @Override
     public void setScaleType(ImageView.ScaleType scaleType) {
-        if (scaleType != SCALE_TYPE) {
+        if (scaleType != ScaleType.CENTER_CROP) {
             throw new IllegalArgumentException(String.format("ScaleType %s not supported.", scaleType));
         }
     }
@@ -86,32 +79,12 @@ public class RoundedImageView extends ImageView {
             throw new IllegalArgumentException("adjustViewBounds not supported.");
         }
     }
+
     @Override
     protected void drawableStateChanged() {
         super.drawableStateChanged();
-        Log.e("MARR","drawableStateChanged");
+        Log.e("MARR", "drawableStateChanged");
     }
-
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        Log.e("MARR","onSizeChanged");
-//        invalidate();
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        Log.e("MARR","onDraw");
-        if (getDrawable() == null) {
-            return;
-        }
-        setup();
-        canvas.drawCircle(getWidth() / 2, getHeight() / 2, mDrawableRadius, mBitmapPaint);
-        if (mBorderWidth != 0) {
-            canvas.drawCircle(getWidth() / 2, getHeight() / 2, mBorderRadius, mBorderPaint);
-        }
-    }
-
 
     @Override
     public void setImageBitmap(Bitmap bm) {
@@ -146,9 +119,31 @@ public class RoundedImageView extends ImageView {
     }
 
 
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        Log.e("MARR", "onSizeChanged");
+//        invalidate();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        Log.e("MARR", "onDraw");
+        if (getDrawable() == null) {
+            return;
+        }
+        setup();
+        canvas.drawCircle(getWidth() / 2, getHeight() / 2, mDrawableRadius, mBitmapPaint);
+        if (mBorderWidth != 0) {
+            canvas.drawCircle(getWidth() / 2, getHeight() / 2, mBorderRadius, mBorderPaint);
+        }
+    }
+
+
+
     private void init() {
-        super.setScaleType(SCALE_TYPE);
-        Log.e("MARR","init");
+        super.setScaleType(ScaleType.CENTER_CROP);
+        Log.e("MARR", "init");
     }
 
     private void setup() {
@@ -156,17 +151,7 @@ public class RoundedImageView extends ImageView {
             return;
         }
         setupBorder();
-
-        Rect borderRect =  new Rect(0, 0, RoundedImageView.this.getWidth(), RoundedImageView.this.getHeight());
-        mBorderRadius = Math.min((borderRect.height() - mBorderWidth) / 2, (borderRect.width() - mBorderWidth) / 2);
-
-        Rect drawableRect =  new Rect(mBorderWidth, mBorderWidth, borderRect.width() - mBorderWidth, borderRect.height() - mBorderWidth);
-        mDrawableRadius = Math.min(drawableRect.height() / 2, drawableRect.width() / 2);
-
-        Log.e("MARR","mBorderRadius:"+mBorderRadius+"    mDrawableRadius:"+mDrawableRadius);
-        setupBitmapShader(drawableRect);
-        mBitmapPaint.setAntiAlias(true);
-        mBitmapPaint.setShader(mBitmapShader);
+        setupBitmap();
 
 //        不使用Xfermode的方式
 //        mBorderPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
@@ -174,36 +159,48 @@ public class RoundedImageView extends ImageView {
     }
 
     private void setupBorder(){
-        mBorderPaint.setAntiAlias(true);
+        Rect viewRect =  new Rect(0, 0, RoundedImageView.this.getWidth(), RoundedImageView.this.getHeight());
+        mBorderRadius = Math.min((viewRect.height() - mBorderWidth) / 2, (viewRect.width() - mBorderWidth) / 2);
 
-        mBorderPaint.setStyle(Paint.Style.STROKE);
         mBorderPaint.setColor(mBorderColor);
         mBorderPaint.setStrokeWidth(mBorderWidth);
+        mBorderPaint.setAntiAlias(true);
+        mBorderPaint.setStyle(Paint.Style.STROKE);
+    }
+
+    private void setupBitmap() {
+        Rect viewRect =  new Rect(0, 0, RoundedImageView.this.getWidth(), RoundedImageView.this.getHeight());
+        Rect drawableRect =  new Rect(mBorderWidth, mBorderWidth, viewRect.width() - mBorderWidth, viewRect.height() - mBorderWidth);
+        mDrawableRadius = Math.min(drawableRect.height() / 2, drawableRect.width() / 2);
+
+        setupBitmapShader(drawableRect);
+        mBitmapPaint.setShader(mBitmapShader);
+        mBitmapPaint.setAntiAlias(true);
     }
 
     private void setupBitmapShader(Rect drawableRect) {
-        mBitmapShader = new BitmapShader(mBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+        switch (getScaleType()){
+            case CENTER_CROP:
+                setupShaderCenterCrop(drawableRect);
+                break ;
+        }
+    }
 
+    private void setupShaderCenterCrop(Rect drawableRect) {
 //        mBitmap = Bitmap.createScaledBitmap(mBitmap, min, min, false);
-        float scale;
-        float dx = 0;
-        float dy = 0;
 
         Matrix shaderMatrix = new Matrix();
         shaderMatrix.set(null);
 
-        int side = Math.min(drawableRect.height(),drawableRect.width()) ;
-//        scale = Math.max( (float) side/(float) mBitmap.getWidth(),  (float) side/(float) mBitmap.getHeight());
-        if((float) side/(float) mBitmap.getWidth() > (float) side/(float) mBitmap.getHeight()) {
-            scale = (float) side/(float) mBitmap.getWidth() ;
-            dy = (drawableRect.height() - mBitmap.getHeight() * scale) / 2;
-        }else{
-            scale = (float) side/(float) mBitmap.getHeight() ;
-            dx = (drawableRect.width() -  mBitmap.getWidth() * scale) / 2;
-        }
+        int side = Math.min(drawableRect.height(), drawableRect.width()) ;
+        float scale = Math.max( (float) side/(float) mBitmap.getWidth(),  (float) side/(float) mBitmap.getHeight());
+        float dx = (drawableRect.width() -  mBitmap.getWidth() * scale) / 2;
+        float dy = (drawableRect.height() - mBitmap.getHeight() * scale) / 2;
+
         shaderMatrix.setScale(scale, scale);
         shaderMatrix.postTranslate((int) (dx + 0.5f) + mBorderWidth, (int) (dy + 0.5f) + mBorderWidth);
 
+        mBitmapShader = new BitmapShader(mBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
         mBitmapShader.setLocalMatrix(shaderMatrix);
     }
 
